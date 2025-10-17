@@ -482,29 +482,6 @@
             margin-bottom: 15px;
             color: #856404;
         }
-
-        .index-help {
-            background-color: #e8f4fd;
-            border: 1px solid #b6e0fe;
-            border-radius: 6px;
-            padding: 15px;
-            margin-bottom: 15px;
-            font-size: 0.9em;
-        }
-
-        .index-help h4 {
-            margin-bottom: 8px;
-            color: #2c3e50;
-        }
-
-        .index-help a {
-            color: #3498db;
-            text-decoration: none;
-        }
-
-        .index-help a:hover {
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body>
@@ -591,18 +568,6 @@
                 <div id="storage-info" class="auth-message" style="display: none;">
                     Faça login para acessar seus cálculos na nuvem
                 </div>
-                <div id="index-help" class="index-help" style="display: none;">
-                    <h4><i class="fas fa-info-circle"></i> Configuração Necessária</h4>
-                    <p>Para usar o armazenamento em nuvem, é necessário criar um índice no Firebase:</p>
-                    <ol>
-                        <li>Acesse o <a href="https://console.firebase.google.com" target="_blank">Firebase Console</a></li>
-                        <li>Vá em Firestore Database → Índices</li>
-                        <li>Clique em "Criar índice"</li>
-                        <li>Coleção: <strong>calculosConstrucoes</strong></li>
-                        <li>Campos: <strong>userId</strong> (Ascendente), <strong>data</strong> (Descendente)</li>
-                    </ol>
-                    <p><small>Enquanto isso, usando ordenação simples...</small></p>
-                </div>
                 <div id="lista-salvos-container">
                     <!-- Lista de cálculos salvos será adicionada aqui -->
                 </div>
@@ -654,7 +619,6 @@
         const toggleLocal = document.getElementById('toggle-local');
         const toggleCloud = document.getElementById('toggle-cloud');
         const storageInfo = document.getElementById('storage-info');
-        const indexHelp = document.getElementById('index-help');
 
         // Inicializar a aplicação
         function inicializar() {
@@ -716,7 +680,6 @@
                 toggleCloud.classList.remove('active');
                 btnSalvar.style.display = 'block';
                 btnSalvarNuvem.style.display = 'none';
-                indexHelp.style.display = 'none';
                 carregarSalvosLocais();
                 storageInfo.style.display = 'none';
             } else {
@@ -724,7 +687,6 @@
                 toggleCloud.classList.add('active');
                 btnSalvar.style.display = 'none';
                 btnSalvarNuvem.style.display = 'block';
-                indexHelp.style.display = 'block';
                 
                 if (currentUser) {
                     carregarSalvosNuvem();
@@ -1210,7 +1172,6 @@
                         <div class="empty-state">
                             <i class="fas fa-exclamation-triangle" style="font-size: 2em; margin-bottom: 10px;"></i>
                             <p>Erro ao carregar cálculos da nuvem.</p>
-                            <p><small>Tente criar o índice no Firebase Console</small></p>
                         </div>
                     `;
                 });
