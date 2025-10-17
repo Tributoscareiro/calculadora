@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Metragem de Construções</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 0;
+        }
+        
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 0;
+            min-height: 100vh;
+            max-width: 100%;
+            margin: 0;
+        }
+        
+        .main-content {
+            background: white;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            border-radius: 0 15px 15px 0;
+            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sidebar {
+            background: #f8f9fa;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #e1e1e1;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #2c3e50;
+            font-size: 2.2em;
+            font-weight: 600;
+        }
+        
+        .monitor {
+            background: linear-gradient(to right, #3498db, #2980b9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.4em;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            font-weight: 500;
+        }
+        
+        .construcoes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding-right: 10px;
+            align-content: start;
+        }
+        
+        .construcao {
+            background-color: white;
+            border: 1px solid #e1e1e1;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: fit-content;
+        }
+        
+        .construcao:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .construcao-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e1e1e1;
+        }
+        
+        .construcao-nome {
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #2c3e50;
+        }
+        
+        .construcao-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9em;
+        }
+        
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            width: 100%;
+            font-size: 1em;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        
+        .input-area {
+            background-color: #f0f0f0;
+            cursor: not-allowed;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            font-size: 1em;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .acoes {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+            gap: 15px;
+        }
+        
+        .btn-danger {
+            background-color: #e74c3c;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .btn-success {
+            background-color: #2ecc71;
+        }
+        
+        .btn-success:hover {
+            background-color: #27ae60;
+        }
+        
+        .btn-secondary {
+            background-color: #95a5a6;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #7f8c8d;
+        }
+        
+        .salvar-container {
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            border: 1px solid #e1e1e1;
+            margin-bottom: 25px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        }
+        
+        .salvar-container h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .salvar-container input {
+            margin-bottom: 15px;
+        }
+        
+        .salvar-container button {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .auth-container {
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            border: 1px solid #e1e1e1;
+            margin-bottom: 25px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        }
+        
+        .auth-container h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .auth-container input {
+            margin-bottom: 15px;
+        }
+        
+        .auth-container button {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .user-info {
+            text-align: center;
+            padding: 15px;
+            background: linear-gradient(to right, #2ecc71, #27ae60);
+            color: white;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .lista-salvos {
+            flex-grow: 1;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            border: 1px solid #e1e1e1;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            overflow-y: auto;
+        }
+        
+        .lista-salvos h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .salvo-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border: 1px solid #e1e1e1;
+            transition: transform 0.2s;
+        }
+        
+        .salvo-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .salvo-info {
+            flex-grow: 1;
+        }
+        
+        .salvo-botoes {
+            display: flex;
+            gap: 8px;
+        }
+        
+        /* Botões minimalistas com ícones */
+        .btn-icon {
+            background: none;
+            border: none;
+            padding: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+        }
+        
+        .btn-carregar {
+            background-color: #9b59b6;
+            color: white;
+        }
+        
+        .btn-carregar:hover {
+            background-color: #8e44ad;
+            transform: scale(1.1);
+        }
+        
+        .btn-excluir-salvo {
+            background-color: #e0e0e0;
+            color: #7f8c8d;
+        }
+        
+        .btn-excluir-salvo:hover {
+            background-color: #d5dbdb;
+            color: #e74c3c;
+            transform: scale(1.1);
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 20px;
+            font-style: italic;
+            grid-column: 1 / -1;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        /* Novos estilos para melhorar o visual profissional */
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .app-logo {
+            font-size: 2.5em;
+            color: #3498db;
+        }
+        
+        .construcao-titulo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .construcao-icon {
+            color: #3498db;
+        }
+        
+        .input-with-unit {
+            position: relative;
+        }
+        
+        .input-with-unit input {
+            padding-right: 40px;
+        }
+        
+        .unit {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        
+        .area-display {
+            background: linear-gradient(to right, #2ecc71, #27ae60);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e1e1e1;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        
+        .btn-remover {
+            font-size: 0.9em;
+            padding: 8px 15px;
+        }
+        
+        .cloud-badge {
+            background: linear-gradient(to right, #ff6b6b, #ee5a52);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            margin-left: 5px;
+        }
+        
+        .storage-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .toggle-btn {
+            flex: 1;
+            padding: 8px;
+            background-color: #ecf0f1;
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .toggle-btn.active {
+            background-color: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        
+        .auth-message {
+            text-align: center;
+            padding: 10px;
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-content">
+            <div class="app-header">
+                <i class="fas fa-ruler-combined app-logo"></i>
+                <h1>Calculadora de Metragem de Construções</h1>
+            </div>
+            
+            <div class="monitor">
+                <div>Total de Área Construída:</div>
+                <div id="total-area">0.00 m²</div>
+            </div>
+            
+            <div class="construcoes-grid" id="construcoes-container">
+                <!-- As construções serão adicionadas aqui dinamicamente -->
+            </div>
+            
+            <div class="acoes">
+                <button id="btn-nova-construcao" class="btn-success">
+                    <i class="fas fa-plus"></i> Adicionar Nova Construção
+                </button>
+                <button id="btn-limpar" class="btn-danger">
+                    <i class="fas fa-trash"></i> Limpar Tudo
+                </button>
+            </div>
+            
+            <div class="stats-container">
+                <div class="stat-item">
+                    <div class="stat-value" id="total-construcoes">0</div>
+                    <div class="stat-label">Construções</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="maior-area">0.00</div>
+                    <div class="stat-label">Maior Área (m²)</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="media-area">0.00</div>
+                    <div class="stat-label">Média (m²)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <div class="auth-container" id="auth-container">
+                <h3><i class="fas fa-user"></i> Autenticação</h3>
+                <div id="user-info" class="user-info" style="display: none;">
+                    <i class="fas fa-user-circle"></i>
+                    <div id="user-email"></div>
+                    <button id="btn-logout" class="btn-danger" style="margin-top: 10px; padding: 5px 10px;">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </button>
+                </div>
+                <div id="login-form">
+                    <input type="email" id="login-email" placeholder="E-mail">
+                    <input type="password" id="login-password" placeholder="Senha">
+                    <button id="btn-login" class="btn-success">
+                        <i class="fas fa-sign-in-alt"></i> Entrar
+                    </button>
+                    <button id="btn-register" class="btn-secondary">
+                        <i class="fas fa-user-plus"></i> Registrar
+                    </button>
+                </div>
+            </div>
+            
+            <div class="salvar-container">
+                <h3><i class="fas fa-save"></i> Salvar Cálculo</h3>
+                <div class="storage-toggle">
+                    <div class="toggle-btn active" id="toggle-local">Local</div>
+                    <div class="toggle-btn" id="toggle-cloud">Nuvem</div>
+                </div>
+                <input type="text" id="nome-salvar" placeholder="Nome para salvar este cálculo">
+                <button id="btn-salvar" class="btn-secondary">
+                    <i class="fas fa-download"></i> Salvar Localmente
+                </button>
+                <button id="btn-salvar-nuvem" class="btn-success" style="display: none;">
+                    <i class="fas fa-cloud-upload-alt"></i> Salvar na Nuvem
+                </button>
+            </div>
+            
+            <div class="lista-salvos">
+                <h3><i class="fas fa-history"></i> Cálculos Salvos</h3>
+                <div id="storage-info" class="auth-message" style="display: none;">
+                    Faça login para acessar seus cálculos na nuvem
+                </div>
+                <div id="lista-salvos-container">
+                    <!-- Lista de cálculos salvos será adicionada aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyC426dZD-lCVI2jL-zjc8XeYRDZsaGWL44",
+            authDomain: "projetos-5d6a4.firebaseapp.com",
+            projectId: "projetos-5d6a4",
+            storageBucket: "projetos-5d6a4.firebasestorage.app",
+            messagingSenderId: "385334925773",
+            appId: "1:385334925773:web:80cc21dd9d216c0cad8c84"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // Array para armazenar as construções
+        let construcoes = [];
+        let currentUser = null;
+        let storageMode = 'local'; // 'local' ou 'cloud'
+
+        // Elementos DOM
+        const construcoesContainer = document.getElementById('construcoes-container');
+        const totalAreaElement = document.getElementById('total-area');
+        const btnNovaConstrucao = document.getElementById('btn-nova-construcao');
+        const btnLimpar = document.getElementById('btn-limpar');
+        const nomeSalvarInput = document.getElementById('nome-salvar');
+        const btnSalvar = document.getElementById('btn-salvar');
+        const btnSalvarNuvem = document.getElementById('btn-salvar-nuvem');
+        const listaSalvosContainer = document.getElementById('lista-salvos-container');
+        const totalConstrucoesElement = document.getElementById('total-construcoes');
+        const maiorAreaElement = document.getElementById('maior-area');
+        const mediaAreaElement = document.getElementById('media-area');
+        const loginEmail = document.getElementById('login-email');
+        const loginPassword = document.getElementById('login-password');
+        const btnLogin = document.getElementById('btn-login');
+        const btnRegister = document.getElementById('btn-register');
+        const btnLogout = document.getElementById('btn-logout');
+        const userInfo = document.getElementById('user-info');
+        const userEmail = document.getElementById('user-email');
+        const loginForm = document.getElementById('login-form');
+        const toggleLocal = document.getElementById('toggle-local');
+        const toggleCloud = document.getElementById('toggle-cloud');
+        const storageInfo = document.getElementById('storage-info');
+
+        // Inicializar a aplicação
+        function inicializar() {
+            // Adicionar a primeira construção
+            adicionarConstrucao();
+            
+            // Configurar autenticação
+            configurarAuth();
+            
+            // Carregar cálculos salvos locais
+            carregarSalvosLocais();
+            
+            // Configurar eventos
+            btnNovaConstrucao.addEventListener('click', adicionarConstrucao);
+            btnLimpar.addEventListener('click', limparTudo);
+            btnSalvar.addEventListener('click', salvarCalculoLocal);
+            btnSalvarNuvem.addEventListener('click', salvarCalculoNuvem);
+            btnLogin.addEventListener('click', fazerLogin);
+            btnRegister.addEventListener('click', fazerRegistro);
+            btnLogout.addEventListener('click', fazerLogout);
+            
+            toggleLocal.addEventListener('click', () => alternarStorage('local'));
+            toggleCloud.addEventListener('click', () => alternarStorage('cloud'));
+        }
+
+        // Configurar sistema de autenticação
+        function configurarAuth() {
+            auth.onAuthStateChanged((user) => {
+                currentUser = user;
+                if (user) {
+                    // Usuário logado
+                    userEmail.textContent = user.email;
+                    userInfo.style.display = 'block';
+                    loginForm.style.display = 'none';
+                    storageInfo.style.display = 'none';
+                    
+                    // Carregar cálculos da nuvem se estiver no modo cloud
+                    if (storageMode === 'cloud') {
+                        carregarSalvosNuvem();
+                    }
+                } else {
+                    // Usuário não logado
+                    userInfo.style.display = 'none';
+                    loginForm.style.display = 'block';
+                    
+                    if (storageMode === 'cloud') {
+                        storageInfo.style.display = 'block';
+                    }
+                }
+            });
+        }
+
+        // Alternar entre armazenamento local e nuvem
+        function alternarStorage(modo) {
+            storageMode = modo;
+            
+            if (modo === 'local') {
+                toggleLocal.classList.add('active');
+                toggleCloud.classList.remove('active');
+                btnSalvar.style.display = 'block';
+                btnSalvarNuvem.style.display = 'none';
+                carregarSalvosLocais();
+                storageInfo.style.display = 'none';
+            } else {
+                toggleLocal.classList.remove('active');
+                toggleCloud.classList.add('active');
+                btnSalvar.style.display = 'none';
+                btnSalvarNuvem.style.display = 'block';
+                
+                if (currentUser) {
+                    carregarSalvosNuvem();
+                    storageInfo.style.display = 'none';
+                } else {
+                    listaSalvosContainer.innerHTML = '';
+                    storageInfo.style.display = 'block';
+                }
+            }
+        }
+
+        // Fazer login
+        function fazerLogin() {
+            const email = loginEmail.value;
+            const password = loginPassword.value;
+            
+            if (!email || !password) {
+                alert('Por favor, preencha e-mail e senha.');
+                return;
+            }
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => {
+                    loginEmail.value = '';
+                    loginPassword.value = '';
+                    alert('Login realizado com sucesso!');
+                })
+                .catch((error) => {
+                    alert('Erro no login: ' + error.message);
+                });
+        }
+
+        // Fazer registro
+        function fazerRegistro() {
+            const email = loginEmail.value;
+            const password = loginPassword.value;
+            
+            if (!email || !password) {
+                alert('Por favor, preencha e-mail e senha.');
+                return;
+            }
+            
+            if (password.length < 6) {
+                alert('A senha deve ter pelo menos 6 caracteres.');
+                return;
+            }
+            
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(() => {
+                    loginEmail.value = '';
+                    loginPassword.value = '';
+                    alert('Registro realizado com sucesso!');
+                })
+                .catch((error) => {
+                    alert('Erro no registro: ' + error.message);
+                });
+        }
+
+        // Fazer logout
+        function fazerLogout() {
+            auth.signOut()
+                .then(() => {
+                    alert('Logout realizado com sucesso!');
+                })
+                .catch((error) => {
+                    alert('Erro no logout: ' + error.message);
+                });
+        }
+        
+        // Adicionar uma nova construção
+        function adicionarConstrucao() {
+            const id = Date.now(); // ID único baseado no timestamp
+            const construcao = {
+                id: id,
+                nome: `Construção ${construcoes.length + 1}`,
+                comprimento: '',
+                largura: '',
+                area: 0
+            };
+            
+            construcoes.push(construcao);
+            renderizarConstrucoes();
+            
+            // Focar no campo de comprimento da nova construção
+            setTimeout(() => {
+                const comprimentoInput = document.querySelector(`.input-comprimento[data-id="${id}"]`);
+                if (comprimentoInput) comprimentoInput.focus();
+            }, 10);
+        }
+        
+        // Renderizar todas as construções
+        function renderizarConstrucoes() {
+            construcoesContainer.innerHTML = '';
+            
+            if (construcoes.length === 0) {
+                construcoesContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-home" style="font-size: 3em; margin-bottom: 15px;"></i>
+                        <p>Nenhuma construção adicionada.</p>
+                        <p>Clique em "Adicionar Nova Construção" para começar.</p>
+                    </div>
+                `;
+                atualizarEstatisticas();
+                return;
+            }
+            
+            construcoes.forEach((construcao) => {
+                const construcaoElement = document.createElement('div');
+                construcaoElement.className = 'construcao';
+                construcaoElement.innerHTML = `
+                    <div class="construcao-header">
+                        <div class="construcao-titulo">
+                            <i class="fas fa-building construcao-icon"></i>
+                            <div class="construcao-nome">${construcao.nome}</div>
+                        </div>
+                        <button class="btn-remover btn-danger" data-id="${construcao.id}">
+                            <i class="fas fa-times"></i> Remover
+                        </button>
+                    </div>
+                    <div class="construcao-inputs">
+                        <div class="input-group">
+                            <label>Comprimento</label>
+                            <div class="input-with-unit">
+                                <input type="number" class="input-comprimento" data-id="${construcao.id}" 
+                                       value="${construcao.comprimento}" min="0" step="0.01" 
+                                       placeholder="0.00">
+                                <span class="unit">m</span>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Largura</label>
+                            <div class="input-with-unit">
+                                <input type="number" class="input-largura" data-id="${construcao.id}" 
+                                       value="${construcao.largura}" min="0" step="0.01" 
+                                       placeholder="0.00">
+                                <span class="unit">m</span>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Área Calculada</label>
+                            <div class="area-display" data-id="${construcao.id}">
+                                ${construcao.area > 0 ? construcao.area.toFixed(2) + ' m²' : '0.00 m²'}
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Renomear Construção</label>
+                            <input type="text" class="input-renomear" data-id="${construcao.id}" 
+                                   value="${construcao.nome}" placeholder="Nome da construção">
+                        </div>
+                    </div>
+                `;
+                
+                construcoesContainer.appendChild(construcaoElement);
+            });
+            
+            // Adicionar eventos aos inputs
+            document.querySelectorAll('.input-comprimento, .input-largura').forEach(input => {
+                input.addEventListener('input', atualizarArea);
+                input.addEventListener('keydown', navegarComEnter);
+                // Remover as setas de incremento/decremento
+                input.addEventListener('wheel', (e) => e.target.blur());
+            });
+            
+            document.querySelectorAll('.input-renomear').forEach(input => {
+                input.addEventListener('change', renomearConstrucao);
+                input.addEventListener('blur', renomearConstrucao);
+            });
+            
+            document.querySelectorAll('.btn-remover').forEach(btn => {
+                btn.addEventListener('click', removerConstrucao);
+            });
+            
+            // Atualizar total e estatísticas
+            atualizarTotal();
+            atualizarEstatisticas();
+        }
+        
+        // Navegar entre campos com a tecla Enter
+        function navegarComEnter(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                
+                const inputs = Array.from(document.querySelectorAll('.input-comprimento, .input-largura'));
+                const currentIndex = inputs.indexOf(event.target);
+                
+                if (currentIndex < inputs.length - 1) {
+                    inputs[currentIndex + 1].focus();
+                }
+            }
+        }
+        
+        // Atualizar a área de uma construção
+        function atualizarArea(event) {
+            const id = parseInt(event.target.dataset.id);
+            const construcao = construcoes.find(c => c.id === id);
+            
+            if (construcao) {
+                const comprimentoInput = document.querySelector(`.input-comprimento[data-id="${id}"]`);
+                const larguraInput = document.querySelector(`.input-largura[data-id="${id}"]`);
+                const areaDisplay = document.querySelector(`.area-display[data-id="${id}"]`);
+                
+                const comprimento = parseFloat(comprimentoInput.value) || 0;
+                const largura = parseFloat(larguraInput.value) || 0;
+                const area = comprimento * largura;
+                
+                construcao.comprimento = comprimentoInput.value;
+                construcao.largura = larguraInput.value;
+                construcao.area = area;
+                
+                if (areaDisplay) {
+                    areaDisplay.textContent = area > 0 ? area.toFixed(2) + ' m²' : '0.00 m²';
+                }
+                
+                atualizarTotal();
+                atualizarEstatisticas();
+            }
+        }
+        
+        // Renomear uma construção - CORRIGIDO: não renderiza tudo novamente
+        function renomearConstrucao(event) {
+            const id = parseInt(event.target.dataset.id);
+            const construcao = construcoes.find(c => c.id === id);
+            
+            if (construcao && construcao.nome !== event.target.value) {
+                construcao.nome = event.target.value;
+                
+                // Atualiza apenas o nome no DOM, sem renderizar tudo
+                const nomeElement = document.querySelector(`.construcao-nome[data-id="${id}"]`);
+                if (nomeElement) {
+                    nomeElement.textContent = event.target.value;
+                }
+            }
+        }
+        
+        // Remover uma construção
+        function removerConstrucao(event) {
+            const id = parseInt(event.target.closest('.btn-remover').dataset.id);
+            construcoes = construcoes.filter(c => c.id !== id);
+            renderizarConstrucoes();
+        }
+        
+        // Atualizar o total de área construída
+        function atualizarTotal() {
+            const total = construcoes.reduce((sum, construcao) => sum + construcao.area, 0);
+            totalAreaElement.textContent = `${total > 0 ? total.toFixed(2) : '0.00'} m²`;
+        }
+        
+        // Atualizar estatísticas
+        function atualizarEstatisticas() {
+            totalConstrucoesElement.textContent = construcoes.length;
+            
+            if (construcoes.length > 0) {
+                const areas = construcoes.map(c => c.area);
+                const maiorArea = Math.max(...areas);
+                const mediaArea = areas.reduce((sum, area) => sum + area, 0) / construcoes.length;
+                
+                maiorAreaElement.textContent = maiorArea.toFixed(2);
+                mediaAreaElement.textContent = mediaArea.toFixed(2);
+            } else {
+                maiorAreaElement.textContent = '0.00';
+                mediaAreaElement.textContent = '0.00';
+            }
+        }
+        
+        // Limpar todas as construções
+        function limparTudo() {
+            if (construcoes.length === 0) {
+                alert('Não há construções para limpar.');
+                return;
+            }
+            
+            if (confirm('Tem certeza que deseja limpar todas as construções?')) {
+                construcoes = [];
+                renderizarConstrucoes();
+            }
+        }
+        
+        // Salvar o cálculo localmente
+        function salvarCalculoLocal() {
+            const nome = nomeSalvarInput.value.trim();
+            
+            if (!nome) {
+                alert('Por favor, digite um nome para salvar o cálculo.');
+                nomeSalvarInput.focus();
+                return;
+            }
+            
+            if (construcoes.length === 0) {
+                alert('Não há construções para salvar.');
+                return;
+            }
+            
+            const calculo = {
+                nome: nome,
+                data: new Date().toLocaleString(),
+                construcoes: construcoes.map(c => ({...c})),
+                total: construcoes.reduce((sum, c) => sum + c.area, 0)
+            };
+            
+            // Obter cálculos salvos existentes
+            const salvos = JSON.parse(localStorage.getItem('calculosConstrucoes') || '[]');
+            
+            // Adicionar o novo cálculo
+            salvos.push(calculo);
+            
+            // Salvar no localStorage
+            localStorage.setItem('calculosConstrucoes', JSON.stringify(salvos));
+            
+            // Limpar o campo de nome
+            nomeSalvarInput.value = '';
+            
+            // Recarregar a lista de salvos
+            carregarSalvosLocais();
+            
+            alert('Cálculo salvo localmente com sucesso!');
+        }
+
+        // Salvar o cálculo na nuvem
+        function salvarCalculoNuvem() {
+            if (!currentUser) {
+                alert('Faça login para salvar na nuvem.');
+                return;
+            }
+            
+            const nome = nomeSalvarInput.value.trim();
+            
+            if (!nome) {
+                alert('Por favor, digite um nome para salvar o cálculo.');
+                nomeSalvarInput.focus();
+                return;
+            }
+            
+            if (construcoes.length === 0) {
+                alert('Não há construções para salvar.');
+                return;
+            }
+            
+            const calculo = {
+                nome: nome,
+                data: new Date().toISOString(),
+                construcoes: construcoes.map(c => ({...c})),
+                total: construcoes.reduce((sum, c) => sum + c.area, 0),
+                userId: currentUser.uid
+            };
+            
+            // Salvar no Firestore
+            db.collection('calculosConstrucoes').add(calculo)
+                .then(() => {
+                    nomeSalvarInput.value = '';
+                    carregarSalvosNuvem();
+                    alert('Cálculo salvo na nuvem com sucesso!');
+                })
+                .catch((error) => {
+                    alert('Erro ao salvar na nuvem: ' + error.message);
+                });
+        }
+        
+        // Carregar cálculos salvos locais
+        function carregarSalvosLocais() {
+            const salvos = JSON.parse(localStorage.getItem('calculosConstrucoes') || '[]');
+            
+            listaSalvosContainer.innerHTML = '';
+            
+            if (salvos.length === 0) {
+                listaSalvosContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open" style="font-size: 2em; margin-bottom: 10px;"></i>
+                        <p>Nenhum cálculo salvo localmente.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            salvos.forEach((salvo, index) => {
+                const salvoElement = document.createElement('div');
+                salvoElement.className = 'salvo-item';
+                salvoElement.innerHTML = `
+                    <div class="salvo-info">
+                        <strong>${salvo.nome}</strong>
+                        <br>
+                        <small>${salvo.data} - Total: ${salvo.total.toFixed(2)} m²</small>
+                    </div>
+                    <div class="salvo-botoes">
+                        <button class="btn-icon btn-carregar" data-index="${index}" data-type="local" title="Carregar cálculo">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="btn-icon btn-excluir-salvo" data-index="${index}" data-type="local" title="Excluir cálculo">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                listaSalvosContainer.appendChild(salvoElement);
+            });
+            
+            // Adicionar eventos aos botões
+            document.querySelectorAll('.btn-carregar').forEach(btn => {
+                btn.addEventListener('click', carregarCalculo);
+            });
+            
+            document.querySelectorAll('.btn-excluir-salvo').forEach(btn => {
+                btn.addEventListener('click', excluirCalculoSalvo);
+            });
+        }
+
+        // Carregar cálculos salvos na nuvem
+        function carregarSalvosNuvem() {
+            if (!currentUser) {
+                listaSalvosContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-cloud" style="font-size: 2em; margin-bottom: 10px;"></i>
+                        <p>Faça login para ver seus cálculos na nuvem.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            listaSalvosContainer.innerHTML = '<div class="empty-state">Carregando...</div>';
+            
+            db.collection('calculosConstrucoes')
+                .where('userId', '==', currentUser.uid)
+                .orderBy('data', 'desc')
+                .get()
+                .then((querySnapshot) => {
+                    listaSalvosContainer.innerHTML = '';
+                    
+                    if (querySnapshot.empty) {
+                        listaSalvosContainer.innerHTML = `
+                            <div class="empty-state">
+                                <i class="fas fa-cloud" style="font-size: 2em; margin-bottom: 10px;"></i>
+                                <p>Nenhum cálculo salvo na nuvem.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    querySnapshot.forEach((doc, index) => {
+                        const salvo = doc.data();
+                        const salvoElement = document.createElement('div');
+                        salvoElement.className = 'salvo-item';
+                        salvoElement.innerHTML = `
+                            <div class="salvo-info">
+                                <strong>${salvo.nome} <span class="cloud-badge">Nuvem</span></strong>
+                                <br>
+                                <small>${new Date(salvo.data).toLocaleString()} - Total: ${salvo.total.toFixed(2)} m²</small>
+                            </div>
+                            <div class="salvo-botoes">
+                                <button class="btn-icon btn-carregar" data-id="${doc.id}" data-type="cloud" title="Carregar cálculo">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                <button class="btn-icon btn-excluir-salvo" data-id="${doc.id}" data-type="cloud" title="Excluir cálculo">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        `;
+                        
+                        listaSalvosContainer.appendChild(salvoElement);
+                    });
+                    
+                    // Adicionar eventos aos botões
+                    document.querySelectorAll('.btn-carregar').forEach(btn => {
+                        btn.addEventListener('click', carregarCalculo);
+                    });
+                    
+                    document.querySelectorAll('.btn-excluir-salvo').forEach(btn => {
+                        btn.addEventListener('click', excluirCalculoSalvo);
+                    });
+                })
+                .catch((error) => {
+                    listaSalvosContainer.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 2em; margin-bottom: 10px;"></i>
+                            <p>Erro ao carregar cálculos: ${error.message}</p>
+                        </div>
+                    `;
+                });
+        }
+        
+        // Carregar um cálculo salvo
+        function carregarCalculo(event) {
+            const tipo = event.target.closest('.btn-carregar').dataset.type;
+            
+            if (tipo === 'local') {
+                const index = parseInt(event.target.closest('.btn-carregar').dataset.index);
+                const salvos = JSON.parse(localStorage.getItem('calculosConstrucoes') || '[]');
+                
+                if (salvos[index]) {
+                    // Confirmar substituição se houver construções atuais
+                    if (construcoes.length > 0 && !confirm('Isso substituirá as construções atuais. Continuar?')) {
+                        return;
+                    }
+                    
+                    construcoes = salvos[index].construcoes.map(c => ({...c}));
+                    renderizarConstrucoes();
+                    alert('Cálculo carregado com sucesso!');
+                }
+            } else if (tipo === 'cloud') {
+                const id = event.target.closest('.btn-carregar').dataset.id;
+                
+                db.collection('calculosConstrucoes').doc(id).get()
+                    .then((doc) => {
+                        if (doc.exists) {
+                            // Confirmar substituição se houver construções atuais
+                            if (construcoes.length > 0 && !confirm('Isso substituirá as construções atuais. Continuar?')) {
+                                return;
+                            }
+                            
+                            const salvo = doc.data();
+                            construcoes = salvo.construcoes.map(c => ({...c}));
+                            renderizarConstrucoes();
+                            alert('Cálculo carregado da nuvem com sucesso!');
+                        }
+                    })
+                    .catch((error) => {
+                        alert('Erro ao carregar da nuvem: ' + error.message);
+                    });
+            }
+        }
+        
+        // Excluir um cálculo salvo
+        function excluirCalculoSalvo(event) {
+            const tipo = event.target.closest('.btn-excluir-salvo').dataset.type;
+            
+            if (!confirm('Tem certeza que deseja excluir este cálculo salvo?')) {
+                return;
+            }
+            
+            if (tipo === 'local') {
+                const index = parseInt(event.target.closest('.btn-excluir-salvo').dataset.index);
+                const salvos = JSON.parse(localStorage.getItem('calculosConstrucoes') || '[]');
+                salvos.splice(index, 1);
+                localStorage.setItem('calculosConstrucoes', JSON.stringify(salvos));
+                carregarSalvosLocais();
+            } else if (tipo === 'cloud') {
+                const id = event.target.closest('.btn-excluir-salvo').dataset.id;
+                
+                db.collection('calculosConstrucoes').doc(id).delete()
+                    .then(() => {
+                        carregarSalvosNuvem();
+                        alert('Cálculo excluído da nuvem com sucesso!');
+                    })
+                    .catch((error) => {
+                        alert('Erro ao excluir da nuvem: ' + error.message);
+                    });
+            }
+        }
+        
+        // Inicializar a aplicação quando o DOM estiver carregado
+        document.addEventListener('DOMContentLoaded', inicializar);
+    </script>
+</body>
+</html>
